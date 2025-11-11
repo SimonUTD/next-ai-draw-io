@@ -3,6 +3,7 @@
 import type React from "react";
 import { useRef, useEffect, useState } from "react";
 import { FaGithub } from "react-icons/fa";
+import { Settings } from "lucide-react";
 
 import {
     Card,
@@ -16,7 +17,11 @@ import { DefaultChatTransport } from "ai";
 import { ChatInput } from "@/components/chat-input";
 import { ChatMessageDisplay } from "./chat-message-display";
 import { useDiagram } from "@/contexts/diagram-context";
+import { useAIConfig } from "@/contexts/ai-config-context";
 import { replaceNodes, formatXML } from "@/lib/utils";
+import { ModelConfigDialog } from "@/components/model-config-dialog";
+import { ModelQuickSwitch } from "@/components/model-quick-switch";
+import { Button } from "@/components/ui/button";
 
 export default function ChatPanel() {
     const {
@@ -46,6 +51,11 @@ export default function ChatPanel() {
     const [files, setFiles] = useState<File[]>([]);
     // Add state for showing the history dialog
     const [showHistory, setShowHistory] = useState(false);
+    // Add state for showing the model config dialog
+    const [showModelConfig, setShowModelConfig] = useState(false);
+
+    // Get AI config
+    const { config } = useAIConfig();
 
     // Convert File[] to FileList for experimental_attachments
     const createFileList = (files: File[]): FileList => {
@@ -162,6 +172,7 @@ Please retry with an adjusted search pattern or use display_diagram if retries a
                     {
                         body: {
                             xml: chartXml,
+                            aiConfig: config,
                         },
                     }
                 );
@@ -190,15 +201,20 @@ Please retry with an adjusted search pattern or use display_diagram if retries a
     return (
         <Card className="h-full flex flex-col rounded-none py-0 gap-0">
             <CardHeader className="p-4 flex justify-between items-center">
-                <CardTitle>Next-AI-Drawio</CardTitle>
-                <a
-                    href="https://github.com/DayuanJiang/next-ai-draw-io"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-gray-600 hover:text-gray-900 transition-colors"
-                >
-                    <FaGithub className="w-6 h-6" />
-                </a>
+                <div className="flex items-center gap-4">
+                    <CardTitle>Next-AI-Drawio</CardTitle>
+                </div>
+                <div className="flex items-center gap-2">
+                    <ModelQuickSwitch onOpenDetailConfig={() => setShowModelConfig(true)} />
+                    <a
+                        href="https://github.com/DayuanJiang/next-ai-draw-io"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-gray-600 hover:text-gray-900 transition-colors"
+                    >
+                        <FaGithub className="w-6 h-6" />
+                    </a>
+                </div>
             </CardHeader>
             <CardContent className="flex-grow overflow-hidden px-2">
                 <ChatMessageDisplay
@@ -225,6 +241,11 @@ Please retry with an adjusted search pattern or use display_diagram if retries a
                     onToggleHistory={setShowHistory}
                 />
             </CardFooter>
+
+            <ModelConfigDialog
+                open={showModelConfig}
+                onOpenChange={setShowModelConfig}
+            />
         </Card>
     );
 }

@@ -8,13 +8,19 @@ import { createOpenAI } from '@ai-sdk/openai';
 
 import { z } from "zod/v3";
 import { replaceXMLParts } from "@/lib/utils";
+import {
+  getEnvConfig,
+  validateConfig,
+  createModelFromConfig,
+  type AIConfig
+} from "@/lib/ai-config-utils";
 
 export const maxDuration = 60
 const openrouter = createOpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
 
 export async function POST(req: Request) {
   try {
-    const { messages, xml } = await req.json();
+    const { messages, xml, aiConfig } = await req.json();
 
     const systemMessage = `
 You are an expert diagram creation assistant specializing in draw.io XML generation.
@@ -127,33 +133,61 @@ ${lastMessageText}
 
     console.log("Enhanced messages:", enhancedMessages);
 
-    const result = streamText({
-      // model: google("gemini-2.5-flash-preview-05-20"),
-      // model: google("gemini-2.5-pro"),
-      // model: bedrock('anthropic.claude-sonnet-4-20250514-v1:0'),
-      system: systemMessage,
-      model: bedrock('global.anthropic.claude-sonnet-4-5-20250929-v1:0'),
-      // model: openrouter('moonshotai/kimi-k2:free'),
-      // model: model,
-      // providerOptions: {
-      //   google: {
-      //     thinkingConfig: {
-      //       thinkingBudget: 128,
-      //     },
-      //   }
-      // },
-      // providerOptions: {
-      //   openai: {
-      //     reasoningEffort: "minimal"
-      //   },
-      // },
-      providerOptions: {
+    // Configuration priority: aiConfig > env > default
+    const effectiveConfig: AIConfig = aiConfig || getEnvConfig();
+
+    // Validate configuration
+    if (!validateConfig(effectiveConfig)) {
+      console.error("Invalid AI configuration:", effectiveConfig);
+      return Response.json(
+        { error: 'Invalid AI configuration' },
+        { status: 400 }
+      );
+    }
+
+    // Create model from configuration
+    const model = createModelFromConfig(effectiveConfig);
+    const temperature = effectiveConfig.parameters?.temperature ?? 0;
+
+    // Check if using custom provider with non-standard endpoint
+    let useCustomClient = false;
+    if (effectiveConfig.customProviders) {
+      const customProvider = effectiveConfig.customProviders.find(p => p.id === effectiveConfig.provider);
+      if (customProvider && customProvider.customEndpoint) {
+        useCustomClient = true;
+      }
+    }
+
+    // Handle custom client differently
+    let providerOptions: any = {};
+    if (effectiveConfig.provider === 'bedrock') {
+      providerOptions = {
         anthropic: {
           additionalModelRequestFields: {
             anthropic_beta: ['fine-grained-tool-streaming-2025-05-14']
           }
         }
-      },
+      };
+    } else if (effectiveConfig.provider === 'google') {
+      providerOptions = {
+        google: {
+          thinkingConfig: {
+            thinkingBudget: 128,
+          },
+        }
+      };
+    } else if (effectiveConfig.provider === 'openai') {
+      providerOptions = {
+        openai: {
+          reasoningEffort: "minimal"
+        },
+      };
+    }
+
+    const result = streamText({
+      system: systemMessage,
+      model,
+      providerOptions,
       messages: enhancedMessages,
       tools: {
         // Client-side tool that will be executed on the client
@@ -189,7 +223,9 @@ IMPORTANT: Keep edits concise:
           })
         },
       },
-      temperature: 0,
+      temperature,
+      maxTokens: effectiveConfig.parameters?.maxTokens,
+      topP: effectiveConfig.parameters?.topP,
     });
 
     // Error handler function to provide detailed error messages

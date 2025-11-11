@@ -1,0 +1,58 @@
+{
+  "sessionId": "WFS-ai-model-config",
+  "task": {
+    "goal": "实现AI模型的界面配置功能",
+    "scope": "创建UI界面用于配置AI模型参数，实现配置优先级逻辑（界面配置优先于env文件配置）",
+    "context": "现有系统使用多个AI提供商（OpenAI, Google, AWS Bedrock, OpenRouter），当前配置通过env文件管理，需要添加用户友好的界面配置层"
+  },
+  "relevantFiles": [
+    {
+      "path": "app/api/chat/route.ts",
+      "purpose": "AI model configuration and API endpoint",
+      "keyFindings": [
+        "Currently hardcoded to use bedrock('global.anthropic.claude-sonnet-4-5-20250929-v1:0')",
+        "Multiple commented-out model options (Google, OpenAI, OpenRouter)",
+        "API keys loaded from environment variables",
+        "Model selection is static, not dynamic"
+      ]
+    },
+    {
+      "path": "components/chat-panel.tsx",
+      "purpose": "Main chat interface component",
+      "keyFindings": [
+        "Uses useChat hook from @ai-sdk/react",
+        "Manages chat state and file attachments",
+        "Good place to add model selection UI"
+      ]
+    },
+    {
+      "path": "env.example",
+      "purpose": "Environment configuration template",
+      "keyFindings": [
+        "Defines API keys for: Google, OpenAI, AWS, OpenRouter",
+        "Current configuration method"
+      ]
+    },
+    {
+      "path": "contexts/diagram-context.tsx",
+      "purpose": "React Context pattern example",
+      "keyFindings": [
+        "Shows how to implement React Context for state management",
+        "Can be used as template for AI config context"
+      ]
+    }
+  ],
+  "technicalContext": {
+    "framework": "Next.js 15 with App Router",
+    "uiLibrary": "React 19 with Tailwind CSS",
+    "aiSdk": "Vercel AI SDK (@ai-sdk/react)",
+    "stateManagement": "React Context",
+    "providers": ["OpenAI", "Google Gemini", "AWS Bedrock", "OpenRouter"]
+  },
+  "constraints": [
+    "Must maintain backward compatibility with env file configuration",
+    "UI configuration should override env configuration",
+    "Need to persist user's model selection",
+    "Should support all existing AI providers"
+  ]
+}
