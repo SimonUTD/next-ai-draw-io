@@ -253,7 +253,7 @@ export function createModelFromConfig(config: AIConfig): any {
     }
   }
 }
-
+}
 // ============================================================================
 // Encryption Utilities for API Key Storage
 // ============================================================================
@@ -274,12 +274,7 @@ export interface EncryptionResult {
  * Generate a device-specific key based on browser fingerprint
  * This key is used for encryption/decryption and is never stored
  */
-export function getDeviceKey(): string {
 
-/**
- * Generate a device-specific key based on browser fingerprint
- * This key is used for encryption/decryption and is never stored
- */
 export function getDeviceKey(): string {
   // Combine multiple browser characteristics for fingerprinting
   const userAgent = navigator.userAgent;
