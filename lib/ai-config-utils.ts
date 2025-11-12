@@ -302,10 +302,15 @@ async function deriveKey(deviceKey: string, salt: Uint8Array): Promise<CryptoKey
     ['deriveBits', 'deriveKey']
   );
 
+  // Create a new ArrayBuffer from the Uint8Array for Web Crypto API compatibility
+  const saltBuffer = salt.buffer.slice(salt.byteOffset, salt.byteOffset + salt.byteLength);
+  // Ensure we have a proper ArrayBuffer (not SharedArrayBuffer)
+  const compatibleSalt = new Uint8Array(salt).buffer;
+
   return crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
-      salt: salt,
+      salt: compatibleSalt,
       iterations: 100000,
       hash: 'SHA-256'
     },

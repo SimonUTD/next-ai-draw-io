@@ -224,7 +224,6 @@ IMPORTANT: Keep edits concise:
         },
       },
       temperature,
-      maxTokens: effectiveConfig.parameters?.maxTokens,
       topP: effectiveConfig.parameters?.topP,
     });
 
