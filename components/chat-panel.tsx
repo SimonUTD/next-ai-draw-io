@@ -21,6 +21,7 @@ import { useAIConfig } from "@/contexts/ai-config-context-v2";
 import { replaceNodes, formatXML } from "@/lib/utils";
 import { ModelConfigDialogV2 } from "@/components/model-config-dialog-v2";
 import { adaptV2ConfigForAPI } from "@/lib/ai-config-adapter";
+import { ModelSelector } from "@/components/model-selector";
 import { Button } from "@/components/ui/button";
 
 export default function ChatPanel() {
@@ -205,13 +206,14 @@ Please retry with an adjusted search pattern or use display_diagram if retries a
                     <CardTitle>Next-AI-Drawio</CardTitle>
                 </div>
                 <div className="flex items-center gap-2">
+                    <ModelSelector />
                     <Button
-                        variant="outline"
-                        size="sm"
+                        variant="ghost"
+                        size="icon"
                         onClick={() => setShowModelConfig(true)}
+                        title="配置管理"
                     >
-                        <Settings className="w-4 h-4 mr-2" />
-                        AI Config
+                        <Settings className="w-5 h-5" />
                     </Button>
                     <a
                         href="https://github.com/DayuanJiang/next-ai-draw-io"
