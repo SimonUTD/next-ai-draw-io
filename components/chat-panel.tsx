@@ -17,10 +17,10 @@ import { DefaultChatTransport } from "ai";
 import { ChatInput } from "@/components/chat-input";
 import { ChatMessageDisplay } from "./chat-message-display";
 import { useDiagram } from "@/contexts/diagram-context";
-import { useAIConfig } from "@/contexts/ai-config-context";
+import { useAIConfig } from "@/contexts/ai-config-context-v2";
 import { replaceNodes, formatXML } from "@/lib/utils";
-import { ModelConfigDialog } from "@/components/model-config-dialog";
-import { ModelQuickSwitch } from "@/components/model-quick-switch";
+import { ModelConfigDialogV2 } from "@/components/model-config-dialog-v2";
+import { adaptV2ConfigForAPI } from "@/lib/ai-config-adapter";
 import { Button } from "@/components/ui/button";
 
 export default function ChatPanel() {
@@ -172,7 +172,7 @@ Please retry with an adjusted search pattern or use display_diagram if retries a
                     {
                         body: {
                             xml: chartXml,
-                            aiConfig: config,
+                            aiConfig: adaptV2ConfigForAPI(config),
                         },
                     }
                 );
@@ -205,7 +205,14 @@ Please retry with an adjusted search pattern or use display_diagram if retries a
                     <CardTitle>Next-AI-Drawio</CardTitle>
                 </div>
                 <div className="flex items-center gap-2">
-                    <ModelQuickSwitch onOpenDetailConfig={() => setShowModelConfig(true)} />
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowModelConfig(true)}
+                    >
+                        <Settings className="w-4 h-4 mr-2" />
+                        AI Config
+                    </Button>
                     <a
                         href="https://github.com/DayuanJiang/next-ai-draw-io"
                         target="_blank"
@@ -242,7 +249,7 @@ Please retry with an adjusted search pattern or use display_diagram if retries a
                 />
             </CardFooter>
 
-            <ModelConfigDialog
+            <ModelConfigDialogV2
                 open={showModelConfig}
                 onOpenChange={setShowModelConfig}
             />
