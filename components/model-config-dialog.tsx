@@ -34,7 +34,7 @@ export function ModelConfigDialog({
   open,
   onOpenChange,
 }: ModelConfigDialogProps) {
-  const { config, updateConfig, addCustomProvider, removeCustomProvider, resetToEnv } = useAIConfig();
+  const { config, updateConfig, addCustomProvider, removeCustomProvider, toggleBuiltInProvider, resetToEnv } = useAIConfig();
 
   // Local state for editing
   const [provider, setProvider] = useState<AIConfig["provider"]>(
@@ -42,7 +42,6 @@ export function ModelConfigDialog({
   );
   const [model, setModel] = useState(config.model);
   const [apiKey, setApiKey] = useState(config.apiKey || "");
-  const [useEnvKey, setUseEnvKey] = useState(!config.apiKey);
   const [temperature, setTemperature] = useState(
     config.parameters?.temperature ?? 0
   );
@@ -62,7 +61,6 @@ export function ModelConfigDialog({
       setProvider(config.provider);
       setModel(config.model);
       setApiKey(config.apiKey || "");
-      setUseEnvKey(!config.apiKey);
       setTemperature(config.parameters?.temperature ?? 0);
       setMaxTokens(config.parameters?.maxTokens?.toString() || "");
       setTopP(config.parameters?.topP ?? 1);
@@ -100,8 +98,8 @@ export function ModelConfigDialog({
       return;
     }
 
-    if (!useEnvKey && !apiKey.trim()) {
-      setError("API key is required when not using environment variable");
+    if (!apiKey.trim()) {
+      setError("API key is required");
       return;
     }
 
@@ -123,7 +121,7 @@ export function ModelConfigDialog({
     const newConfig: Partial<AIConfig> = {
       provider,
       model,
-      apiKey: useEnvKey ? undefined : apiKey || undefined,
+      apiKey: apiKey || undefined,
       parameters: {
         temperature,
         maxTokens: maxTokens ? parseInt(maxTokens, 10) : undefined,
@@ -214,10 +212,32 @@ export function ModelConfigDialog({
                     <SelectValue placeholder="Select provider" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="openai">OpenAI</SelectItem>
-                    <SelectItem value="google">Google Gemini</SelectItem>
-                    <SelectItem value="bedrock">AWS Bedrock</SelectItem>
-                    <SelectItem value="openrouter">OpenRouter</SelectItem>
+                    {[
+                      { id: 'openai', name: 'OpenAI' },
+                      { id: 'google', name: 'Google Gemini' },
+                      { id: 'bedrock', name: 'AWS Bedrock' },
+                      { id: 'openrouter', name: 'OpenRouter' }
+                    ].map((builtIn) => {
+                      const isDisabled = config.disabledProviders?.includes(builtIn.id);
+                      return (
+                        <div key={builtIn.id} className="flex items-center justify-between px-2 py-1.5 hover:bg-accent">
+                          <SelectItem value={builtIn.id} className="flex-1 border-0">
+                            {builtIn.name} {isDisabled && <span className="text-xs text-muted-foreground">(已禁用)</span>}
+                          </SelectItem>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleBuiltInProvider(builtIn.id);
+                            }}
+                          >
+                            {isDisabled ? '启用' : '禁用'}
+                          </Button>
+                        </div>
+                      );
+                    })}
                     {config.customProviders && config.customProviders.length > 0 && (
                       <>
                         <div className="my-1 h-px bg-border" />
@@ -292,29 +312,15 @@ export function ModelConfigDialog({
           {/* API Key Input */}
           <div className="grid gap-2">
             <label htmlFor="apiKey" className="text-sm font-medium">
-              API Key (Optional)
+              API Key *
             </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="useEnvKey"
-                checked={useEnvKey}
-                onChange={(e) => setUseEnvKey(e.target.checked)}
-                className="size-4 rounded border-input"
-              />
-              <label htmlFor="useEnvKey" className="text-sm">
-                Use environment variable
-              </label>
-            </div>
-            {!useEnvKey && (
-              <Input
-                id="apiKey"
-                type="password"
-                placeholder="Enter API key"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-              />
-            )}
+            <Input
+              id="apiKey"
+              type="password"
+              placeholder="Enter API key"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+            />
           </div>
 
           {/* Temperature Slider */}
