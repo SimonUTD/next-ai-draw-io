@@ -34,7 +34,7 @@ export function ModelConfigDialog({
   open,
   onOpenChange,
 }: ModelConfigDialogProps) {
-  const { config, updateConfig, addCustomProvider, removeCustomProvider, toggleBuiltInProvider, resetToEnv } = useAIConfig();
+  const { config, updateConfig, addCustomProvider, removeCustomProvider, toggleBuiltInProvider, toggleCustomProvider, resetToEnv } = useAIConfig();
 
   // Local state for editing
   const [provider, setProvider] = useState<AIConfig["provider"]>(
@@ -247,6 +247,17 @@ export function ModelConfigDialog({
                               {cp.name} {!cp.enabled && <span className="text-xs text-muted-foreground">(已禁用)</span>}
                             </SelectItem>
                             <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-2 text-xs"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleCustomProvider(cp.id);
+                                }}
+                              >
+                                {cp.enabled ? '禁用' : '启用'}
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"

@@ -12,6 +12,7 @@ interface AIConfigContextType {
   addCustomProvider: (provider: CustomProvider) => void;
   removeCustomProvider: (id: string) => void;
   toggleBuiltInProvider: (providerId: string) => void;
+  toggleCustomProvider: (providerId: string) => void;
   resetToEnv: () => void;
   isUsingEnvConfig: boolean;
 }
@@ -176,6 +177,17 @@ export function AIConfigProvider({ children }: { children: React.ReactNode }) {
     await updateConfig({ disabledProviders: updatedDisabledProviders });
   };
 
+  const toggleCustomProvider = async (providerId: string) => {
+    const customProviders = config.customProviders || [];
+    const updatedProviders = customProviders.map(provider =>
+      provider.id === providerId
+        ? { ...provider, enabled: !provider.enabled }
+        : provider
+    );
+    
+    await updateConfig({ customProviders: updatedProviders });
+  };
+
   const resetToEnv = () => {
     const envConfig = getEnvConfig();
     setConfig(envConfig);
@@ -195,6 +207,7 @@ export function AIConfigProvider({ children }: { children: React.ReactNode }) {
         addCustomProvider,
         removeCustomProvider,
         toggleBuiltInProvider,
+        toggleCustomProvider,
         resetToEnv,
         isUsingEnvConfig,
       }}
