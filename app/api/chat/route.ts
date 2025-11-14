@@ -16,7 +16,6 @@ import {
 } from "@/lib/ai-config-utils";
 
 export const maxDuration = 60
-const openrouter = createOpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
 
 export async function POST(req: Request) {
   try {

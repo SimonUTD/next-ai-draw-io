@@ -39,8 +39,8 @@ export function CustomProviderForm({
         id: "",
         name: "",
         parameters: {
-          temperature: 0,
-          maxTokens: 4096,
+          temperature: 0.9,
+          maxTokens: 96000,
           topP: 1,
         },
       },

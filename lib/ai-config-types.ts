@@ -46,6 +46,7 @@ export interface AIConfig {
     topP?: number;
   };
   customProviders?: CustomProvider[]; // User-added custom providers
+  disabledProviders?: string[]; // List of disabled built-in provider IDs
 }
 
 /**
@@ -79,8 +80,8 @@ export function migrateModels(models: any[]): ModelConfig[] {
         id: m,
         name: m,
         parameters: {
-          temperature: 0,
-          maxTokens: 4096,
+          temperature: 0.9,
+          maxTokens: 96000,
           topP: 1
         }
       };

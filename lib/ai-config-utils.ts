@@ -33,6 +33,7 @@ export interface AIConfig {
     topP?: number;
   };
   customProviders?: CustomProvider[]; // User-added custom providers
+  disabledProviders?: string[]; // List of disabled built-in provider IDs
 }
 
 export const MODEL_OPTIONS = {
@@ -159,8 +160,8 @@ export function migrateProvider(provider: any): CustomProvider {
         id: m,
         name: m,
         parameters: {
-          temperature: 0,
-          maxTokens: 4096,
+          temperature: 0.9,
+          maxTokens: 96000,
           topP: 1
         }
       }))
@@ -170,54 +171,9 @@ export function migrateProvider(provider: any): CustomProvider {
 }
 
 export function createModelFromConfig(config: AIConfig): any {
-  switch (config.provider) {
-    case "openai": {
-      if (config.apiKey) {
-        const customOpenAI = createOpenAI({
-          apiKey: config.apiKey,
-        });
-        return customOpenAI(config.model);
-      }
-      return openai(config.model);
-    }
-
-    case "google": {
-      if (config.apiKey) {
-        const customGoogle = createGoogleGenerativeAI({
-          apiKey: config.apiKey,
-        });
-        return customGoogle(config.model);
-      }
-      return google(config.model);
-    }
-
-    case "bedrock":
-      // Bedrock uses environment variables for credentials
-      return bedrock(config.model);
-
-    case "openrouter": {
-      const openrouter = createOpenRouter({
-        apiKey: config.apiKey || process.env.OPENROUTER_API_KEY,
-      });
-      return openrouter(config.model);
-    }
-
-    default: {
-      // Handle custom providers
-      if (config.customProviders) {
-        const customProvider = config.customProviders.find(p => p.id === config.provider);
-        if (customProvider) {
-          // Use standard OpenAI client for OpenAI-compatible endpoints
-          const customOpenAI = createOpenAI({
-            apiKey: customProvider.apiKey || config.apiKey || '',
-            baseURL: customProvider.baseURL,
-          });
-          return customOpenAI(config.model);
-        }
-      }
-      throw new Error(`Unsupported provider: ${config.provider}`);
-    }
-  }
+  // Import ProviderRegistry to use the new system
+  const { providerRegistry } = require('./provider-registry');
+  return providerRegistry.createProvider(config);
 }
 // ============================================================================
 // Encryption Utilities for API Key Storage

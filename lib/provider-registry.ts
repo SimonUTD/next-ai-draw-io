@@ -50,13 +50,13 @@ export class OpenAIProviderFactory implements IProviderFactory {
   }
 
   createProvider(config: AIConfig): any {
-    if (config.apiKey) {
-      const customOpenAI = createOpenAI({
-        apiKey: config.apiKey,
-      });
-      return customOpenAI(config.model);
+    if (!config.apiKey) {
+      throw new Error('OpenAI API key is required. Please configure it in settings.');
     }
-    return openai(config.model);
+    const customOpenAI = createOpenAI({
+      apiKey: config.apiKey,
+    });
+    return customOpenAI(config.model);
   }
 
   validateConfig(config: AIConfig): boolean {
@@ -84,13 +84,13 @@ export class GoogleProviderFactory implements IProviderFactory {
   }
 
   createProvider(config: AIConfig): any {
-    if (config.apiKey) {
-      const customGoogle = createGoogleGenerativeAI({
-        apiKey: config.apiKey,
-      });
-      return customGoogle(config.model);
+    if (!config.apiKey) {
+      throw new Error('Google API key is required. Please configure it in settings.');
     }
-    return google(config.model);
+    const customGoogle = createGoogleGenerativeAI({
+      apiKey: config.apiKey,
+    });
+    return customGoogle(config.model);
   }
 
   validateConfig(config: AIConfig): boolean {
@@ -122,46 +122,41 @@ export class BedrockProviderFactory implements IProviderFactory {
   }
 
   createProvider(config: AIConfig): any {
-    // Check if AWS credentials are provided in config or environment
-    const region = (config as any).region || process.env.AWS_REGION;
-    const accessKeyId = (config as any).accessKeyId || process.env.AWS_ACCESS_KEY_ID;
-    const secretAccessKey = (config as any).secretAccessKey || process.env.AWS_SECRET_ACCESS_KEY;
+    const region = (config as any).region;
+    const accessKeyId = (config as any).accessKeyId;
+    const secretAccessKey = (config as any).secretAccessKey;
     
     if (!region) {
-      throw new Error('AWS region is required for Bedrock provider. Please set AWS_REGION environment variable or provide region in configuration.');
+      throw new Error('AWS region is required for Bedrock provider. Please configure it in settings.');
     }
     
-    // Create Bedrock provider with AWS configuration
+    if (!accessKeyId || !secretAccessKey) {
+      throw new Error('AWS credentials are required for Bedrock provider. Please configure them in settings.');
+    }
+    
     const bedrockConfig: any = {
       model: config.model,
+      region,
+      accessKeyId,
+      secretAccessKey,
     };
-    
-    // Add AWS credentials if available
-    if (accessKeyId && secretAccessKey) {
-      bedrockConfig.accessKeyId = accessKeyId;
-      bedrockConfig.secretAccessKey = secretAccessKey;
-    }
-    
-    if (region) {
-      bedrockConfig.region = region;
-    }
     
     return bedrock(bedrockConfig);
   }
 
   validateConfig(config: AIConfig): boolean {
-    // Bedrock-specific validation logic
     if (!config.model || typeof config.model !== 'string') {
       return false;
     }
 
-    // Validate AWS region is available (either in config or environment)
-    const region = (config as any).region || process.env.AWS_REGION;
-    if (!region) {
+    const region = (config as any).region;
+    const accessKeyId = (config as any).accessKeyId;
+    const secretAccessKey = (config as any).secretAccessKey;
+    
+    if (!region || !accessKeyId || !secretAccessKey) {
       return false;
     }
 
-    // Temperature range validation for Bedrock (0-1)
     if (config.parameters?.temperature !== undefined) {
       return config.parameters.temperature >= 0 && config.parameters.temperature <= 1;
     }
@@ -184,8 +179,11 @@ export class OpenRouterProviderFactory implements IProviderFactory {
   }
 
   createProvider(config: AIConfig): any {
+    if (!config.apiKey) {
+      throw new Error('OpenRouter API key is required. Please configure it in settings.');
+    }
     const openrouter = createOpenRouter({
-      apiKey: config.apiKey || process.env.OPENROUTER_API_KEY,
+      apiKey: config.apiKey,
     });
     return openrouter(config.model);
   }

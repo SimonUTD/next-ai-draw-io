@@ -49,16 +49,19 @@ export function ModelQuickSwitch({ onOpenDetailConfig }: ModelQuickSwitchProps) 
   // Generate all available model options
   const getAllModelOptions = () => {
     const options: Array<{ provider: string; providerName: string; model: string }> = [];
+    const disabledProviders = config.disabledProviders || [];
 
-    // Built-in providers
+    // Built-in providers (filter out disabled ones)
     Object.entries(MODEL_OPTIONS).forEach(([provider, models]) => {
-      models.forEach((model) => {
-        options.push({
-          provider,
-          providerName: getProviderDisplayName(provider),
-          model,
+      if (!disabledProviders.includes(provider)) {
+        models.forEach((model) => {
+          options.push({
+            provider,
+            providerName: getProviderDisplayName(provider),
+            model,
+          });
         });
-      });
+      }
     });
 
     // Custom providers (only enabled ones)
