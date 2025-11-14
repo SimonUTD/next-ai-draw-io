@@ -12,8 +12,7 @@ import { google, createGoogleGenerativeAI } from "@ai-sdk/google";
 import { bedrock } from "@ai-sdk/amazon-bedrock";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { CustomProvider, AIConfig } from "./ai-config-utils";
-import { getModelName } from "./ai-config-types";
+import { CustomProvider, AIConfig, ModelConfig } from "./ai-config-types";
 
 // ============================================================================
 // Abstract Factory Interface for Provider Creation
@@ -226,84 +225,14 @@ export class CustomProviderFactory implements IProviderFactory {
       throw new Error(`Custom provider configuration not found for: ${config.provider}`);
     }
 
-    if (customProvider.type === 'openai-compatible') {
-      // Use the official @ai-sdk/openai-compatible package
-      // This is the correct approach according to AI SDK documentation
-      const openaiCompatible = createOpenAICompatible({
-        name: customProvider.name || config.provider,
-        apiKey: customProvider.apiKey || config.apiKey || '',
-        baseURL: (customProvider as any).authentication?.baseUrl || customProvider.baseURL,
-      });
-      return openaiCompatible(config.model);
-    } else {
-      // For custom-api type, create a generic HTTP client with streaming support
-      const customClient = {
-        // Add required provider information for AI SDK v5
-        provider: customProvider.name || config.provider,
-        version: 'v2',
-        
-        async doGenerate(messages: any[], options: any = {}) {
-          try {
-            const response = await fetch(`${customProvider.baseURL}`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${customProvider.apiKey || config.apiKey || ''}`
-              },
-              body: JSON.stringify({
-                model: config.model,
-                messages: messages,
-                stream: false, // Important: disable streaming for non-streaming calls
-                ...options
-              })
-            });
-
-            if (!response.ok) {
-              throw new Error(`API request failed: ${response.status} ${response.statusText}`);
-            }
-
-            const result = await response.json();
-            return result;
-          } catch (error) {
-            console.error('Custom API error:', error);
-            throw error;
-          }
-        },
-        
-        // Implement streaming support for AI SDK v5
-        async doStream(messages: any[], options: any = {}) {
-          try {
-            const response = await fetch(`${(customProvider as any).authentication?.baseUrl || customProvider.baseURL}/chat/completions`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${customProvider.apiKey || config.apiKey || ''}`
-              },
-              body: JSON.stringify({
-                model: config.model,
-                messages: messages,
-                stream: true, // Enable streaming
-                ...options
-              })
-            });
-
-            if (!response.ok) {
-              throw new Error(`API request failed: ${response.status} ${response.statusText}`);
-            }
-
-            // Return the correct format for AI SDK v5
-            // The doStream method should return a Promise that resolves to an object with a stream property
-            return {
-              stream: response.body,
-            };
-          } catch (error) {
-            console.error('Custom API streaming error:', error);
-            throw error;
-          }
-        }
-      };
-      return customClient;
-    }
+    // Use the official @ai-sdk/openai-compatible package
+    const provider = createOpenAICompatible({
+      name: customProvider.name,
+      apiKey: customProvider.apiKey || config.apiKey || '',
+      baseURL: customProvider.baseURL,
+    });
+    
+    return provider(config.model);
   }
 
   validateConfig(config: AIConfig, customProvider?: CustomProvider): boolean {
@@ -317,17 +246,11 @@ export class CustomProviderFactory implements IProviderFactory {
     }
 
     // Validate that the model exists in the custom provider's model list
-    // Handle both string and object model formats
-    const modelNames = customProvider.models.map(model => 
-      typeof model === 'string' ? model : (model as any).name || (model as any).id || String(model)
+    const modelExists = customProvider.models.some(
+      m => m.id === config.model || m.name === config.model
     );
     
-    if (!modelNames.includes(config.model)) {
-      console.error('Model validation failed:', {
-        requestedModel: config.model,
-        availableModels: modelNames,
-        originalModels: customProvider.models
-      });
+    if (!modelExists) {
       return false;
     }
 
@@ -459,7 +382,7 @@ export class ProviderRegistry {
     // For custom providers, return models from the custom provider configuration
     if (factory instanceof CustomProviderFactory && customProviders) {
       const customProvider = customProviders.find(p => p.id === providerType);
-      return customProvider?.models.map(model => getModelName(model)) || [];
+      return customProvider?.models.map(m => m.name) || [];
     }
 
     return factory.getSupportedModels();

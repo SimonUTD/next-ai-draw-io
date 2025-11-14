@@ -1,8 +1,9 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import type { AIConfig, CustomProvider } from "@/lib/ai-config-utils";
-import { getEnvConfig, validateConfig, validateCustomProvider } from "@/lib/ai-config-utils";
+import type { AIConfig } from "@/lib/ai-config-utils";
+import type { CustomProvider } from "@/lib/ai-config-types";
+import { getEnvConfig, validateConfig, validateCustomProvider, migrateProvider } from "@/lib/ai-config-utils";
 import { encryptApiKey, decryptApiKey } from "@/lib/ai-config-utils";
 
 interface AIConfigContextType {
@@ -42,18 +43,26 @@ export function AIConfigProvider({ children }: { children: React.ReactNode }) {
             }
           }
 
-          // Decrypt custom provider API keys
+          // Migrate and decrypt custom provider API keys
           if (parsedConfig.customProviders) {
-            for (const provider of parsedConfig.customProviders) {
-              if (provider.apiKey) {
-                try {
-                  provider.apiKey = await decryptApiKey(provider.apiKey);
-                } catch (error) {
-                  console.error(`Failed to decrypt API key for provider ${provider.name}:`, error);
-                  provider.apiKey = undefined;
+            parsedConfig.customProviders = await Promise.all(
+              parsedConfig.customProviders.map(async (provider) => {
+                // Migrate legacy format
+                const migrated = migrateProvider(provider);
+                
+                // Decrypt API key
+                if (migrated.apiKey) {
+                  try {
+                    migrated.apiKey = await decryptApiKey(migrated.apiKey);
+                  } catch (error) {
+                    console.error(`Failed to decrypt API key for provider ${migrated.name}:`, error);
+                    migrated.apiKey = undefined;
+                  }
                 }
-              }
-            }
+                
+                return migrated;
+              })
+            );
           }
 
           if (validateConfig(parsedConfig)) {

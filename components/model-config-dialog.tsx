@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { useAIConfig } from "@/contexts/ai-config-context";
-import { MODEL_OPTIONS, type AIConfig, type CustomProvider } from "@/lib/ai-config-utils";
+import { MODEL_OPTIONS, type AIConfig } from "@/lib/ai-config-utils";
+import { type CustomProvider } from "@/lib/ai-config-types";
 import {
   Dialog,
   DialogContent,
@@ -22,7 +23,7 @@ import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CustomProviderForm } from "@/components/custom-provider-form";
-import { Plus } from "lucide-react";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 
 interface ModelConfigDialogProps {
   open: boolean;
@@ -33,7 +34,7 @@ export function ModelConfigDialog({
   open,
   onOpenChange,
 }: ModelConfigDialogProps) {
-  const { config, updateConfig, addCustomProvider, resetToEnv } = useAIConfig();
+  const { config, updateConfig, addCustomProvider, removeCustomProvider, resetToEnv } = useAIConfig();
 
   // Local state for editing
   const [provider, setProvider] = useState<AIConfig["provider"]>(
@@ -53,6 +54,7 @@ export function ModelConfigDialog({
   );
   const [error, setError] = useState<string>("");
   const [showCustomProviderForm, setShowCustomProviderForm] = useState(false);
+  const [editingProvider, setEditingProvider] = useState<CustomProvider | undefined>();
 
   // Sync local state with context when dialog opens
   useEffect(() => {
@@ -66,6 +68,7 @@ export function ModelConfigDialog({
       setTopP(config.parameters?.topP ?? 1);
       setError("");
       setShowCustomProviderForm(false);
+      setEditingProvider(undefined);
     }
   }, [open, config]);
 
@@ -79,7 +82,7 @@ export function ModelConfigDialog({
     } else {
       // Custom provider
       const customProvider = config.customProviders?.find(p => p.id === provider);
-      models = customProvider?.models || [];
+      models = customProvider?.models.map(m => m.name) || [];
     }
 
     if (models.length > 0 && !models.includes(model)) {
@@ -137,6 +140,18 @@ export function ModelConfigDialog({
     await addCustomProvider(provider);
     setProvider(provider.id);
     setShowCustomProviderForm(false);
+    setEditingProvider(undefined);
+  };
+
+  const handleEditProvider = (provider: CustomProvider) => {
+    setEditingProvider(provider);
+    setShowCustomProviderForm(true);
+  };
+
+  const handleDeleteProvider = async (providerId: string) => {
+    if (confirm("确定要删除此渠道吗？")) {
+      await removeCustomProvider(providerId);
+    }
   };
 
   const handleReset = () => {
@@ -164,8 +179,12 @@ export function ModelConfigDialog({
         <div className="grid gap-4 py-4">
           {showCustomProviderForm ? (
             <CustomProviderForm
+              provider={editingProvider}
               onSave={handleAddCustomProvider}
-              onCancel={() => setShowCustomProviderForm(false)}
+              onCancel={() => {
+                setShowCustomProviderForm(false);
+                setEditingProvider(undefined);
+              }}
             />
           ) : (
             <>
@@ -203,9 +222,35 @@ export function ModelConfigDialog({
                       <>
                         <div className="my-1 h-px bg-border" />
                         {config.customProviders.map((cp) => (
-                          <SelectItem key={cp.id} value={cp.id}>
-                            {cp.name}
-                          </SelectItem>
+                          <div key={cp.id} className="flex items-center justify-between px-2 py-1.5 hover:bg-accent">
+                            <SelectItem value={cp.id} className="flex-1 border-0">
+                              {cp.name} {!cp.enabled && <span className="text-xs text-muted-foreground">(已禁用)</span>}
+                            </SelectItem>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditProvider(cp);
+                                }}
+                              >
+                                <Pencil className="size-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteProvider(cp.id);
+                                }}
+                              >
+                                <Trash2 className="size-3" />
+                              </Button>
+                            </div>
+                          </div>
                         ))}
                       </>
                     )}
@@ -234,8 +279,8 @@ export function ModelConfigDialog({
                       } else {
                         const customProvider = config.customProviders?.find(p => p.id === provider);
                         return customProvider?.models.map((m) => (
-                          <SelectItem key={m} value={m}>
-                            {m}
+                          <SelectItem key={m.id} value={m.name}>
+                            {m.name}
                           </SelectItem>
                         )) || [];
                       }

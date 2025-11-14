@@ -149,16 +149,6 @@ ${lastMessageText}
     const model = createModelFromConfig(effectiveConfig);
     const temperature = effectiveConfig.parameters?.temperature ?? 0;
 
-    // Check if using custom provider with non-standard endpoint
-    let useCustomClient = false;
-    if (effectiveConfig.customProviders) {
-      const customProvider = effectiveConfig.customProviders.find(p => p.id === effectiveConfig.provider);
-      if (customProvider && customProvider.customEndpoint) {
-        useCustomClient = true;
-      }
-    }
-
-    // Handle custom client differently
     let providerOptions: any = {};
     if (effectiveConfig.provider === 'bedrock') {
       providerOptions = {

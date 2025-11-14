@@ -3,14 +3,24 @@ import { google, createGoogleGenerativeAI } from "@ai-sdk/google";
 import { bedrock } from "@ai-sdk/amazon-bedrock";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 
+export interface ModelConfig {
+  id: string;
+  name: string;
+  parameters: {
+    temperature: number;
+    maxTokens?: number;
+    topP?: number;
+  };
+}
+
 export interface CustomProvider {
-  id: string; // User-defined ID
-  name: string; // Display name
-  type: 'openai-compatible' | 'custom-api';
-  baseURL: string; // Custom API endpoint
-  models: string[]; // Available model list
-  apiKey?: string; // Encrypted storage
-  customEndpoint?: boolean; // Whether this uses a non-standard endpoint
+  id: string;
+  name: string;
+  type: 'openai-compatible';
+  baseURL: string;
+  apiKey?: string;
+  enabled: boolean;
+  models: ModelConfig[];
 }
 
 export interface AIConfig {
@@ -76,7 +86,7 @@ export function validateConfig(config: AIConfig): boolean {
       return false;
     }
     // Validate model exists in custom provider's model list
-    if (!customProvider.models.includes(config.model)) {
+    if (!customProvider.models.some(m => m.id === config.model || m.name === config.model)) {
       return false;
     }
   }
@@ -113,57 +123,50 @@ export function validateConfig(config: AIConfig): boolean {
  * Prevents SSRF attacks and ensures valid configuration
  */
 export function validateCustomProvider(provider: CustomProvider): boolean {
-  // Provider name must not be empty
-  if (!provider.name || provider.name.trim() === '') {
-    return false;
-  }
+  if (!provider.name || provider.name.trim() === '') return false;
+  if (!provider.models || provider.models.length === 0) return false;
 
-  // Must have at least one model
-  if (!provider.models || provider.models.length === 0) {
-    return false;
-  }
-
-  // Validate baseURL
   try {
     const url = new URL(provider.baseURL);
+    if (url.protocol !== 'https:') return false;
 
-    // Must use HTTPS
-    if (url.protocol !== 'https:') {
-      return false;
-    }
-
-    // Prevent SSRF attacks - block internal addresses
     const hostname = url.hostname.toLowerCase();
     if (
       hostname === 'localhost' ||
       hostname.startsWith('127.') ||
       hostname.startsWith('192.168.') ||
       hostname.startsWith('10.') ||
-      hostname.startsWith('172.16.') ||
-      hostname.startsWith('172.17.') ||
-      hostname.startsWith('172.18.') ||
-      hostname.startsWith('172.19.') ||
-      hostname.startsWith('172.20.') ||
-      hostname.startsWith('172.21.') ||
-      hostname.startsWith('172.22.') ||
-      hostname.startsWith('172.23.') ||
-      hostname.startsWith('172.24.') ||
-      hostname.startsWith('172.25.') ||
-      hostname.startsWith('172.26.') ||
-      hostname.startsWith('172.27.') ||
-      hostname.startsWith('172.28.') ||
-      hostname.startsWith('172.29.') ||
-      hostname.startsWith('172.30.') ||
-      hostname.startsWith('172.31.')
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname)
     ) {
       return false;
     }
 
     return true;
-  } catch (error) {
-    // Invalid URL
+  } catch {
     return false;
   }
+}
+
+/**
+ * Migrate legacy provider data to new format
+ */
+export function migrateProvider(provider: any): CustomProvider {
+  if (provider.models && provider.models.length > 0 && typeof provider.models[0] === 'string') {
+    return {
+      ...provider,
+      enabled: provider.enabled ?? true,
+      models: provider.models.map((m: string) => ({
+        id: m,
+        name: m,
+        parameters: {
+          temperature: 0,
+          maxTokens: 4096,
+          topP: 1
+        }
+      }))
+    };
+  }
+  return provider;
 }
 
 export function createModelFromConfig(config: AIConfig): any {
@@ -204,55 +207,17 @@ export function createModelFromConfig(config: AIConfig): any {
       if (config.customProviders) {
         const customProvider = config.customProviders.find(p => p.id === config.provider);
         if (customProvider) {
-          if (customProvider.type === 'openai-compatible') {
-            // Check if the baseURL uses a non-standard endpoint
-            if (customProvider.customEndpoint) {
-              // For custom endpoints that don't follow OpenAI format, create a custom HTTP client
-              const customClient = {
-                async doGenerate(messages: any[], options: any = {}) {
-                  try {
-                    const response = await fetch(`${customProvider.baseURL}`, {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${customProvider.apiKey || config.apiKey || ''}`
-                      },
-                      body: JSON.stringify({
-                        model: config.model,
-                        messages: messages,
-                        ...options
-                    })
-                  });
-
-                  if (!response.ok) {
-                    throw new Error(`API request failed: ${response.status} ${response.statusText}`);
-                  }
-
-                  const result = await response.json();
-                  return result;
-                } catch (error) {
-                  console.error('Custom API error:', error);
-                  throw error;
-                }
-              }
-            };
-            return customClient;
-          } else {
-            // Use standard OpenAI client for OpenAI-compatible endpoints
-            const customOpenAI = createOpenAI({
-              apiKey: customProvider.apiKey || config.apiKey || '',
-              baseURL: customProvider.baseURL,
-            });
-            return customOpenAI(config.model);
-          }
-        } else {
-          throw new Error(`Unsupported provider: ${config.provider}`);
+          // Use standard OpenAI client for OpenAI-compatible endpoints
+          const customOpenAI = createOpenAI({
+            apiKey: customProvider.apiKey || config.apiKey || '',
+            baseURL: customProvider.baseURL,
+          });
+          return customOpenAI(config.model);
         }
       }
       throw new Error(`Unsupported provider: ${config.provider}`);
     }
   }
-}
 }
 // ============================================================================
 // Encryption Utilities for API Key Storage

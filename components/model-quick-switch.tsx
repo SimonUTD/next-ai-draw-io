@@ -61,17 +61,19 @@ export function ModelQuickSwitch({ onOpenDetailConfig }: ModelQuickSwitchProps) 
       });
     });
 
-    // Custom providers
+    // Custom providers (only enabled ones)
     if (config.customProviders) {
-      config.customProviders.forEach((cp) => {
-        cp.models.forEach((model) => {
-          options.push({
-            provider: cp.id,
-            providerName: cp.name,
-            model,
+      config.customProviders
+        .filter(cp => cp.enabled)
+        .forEach((cp) => {
+          cp.models.forEach((model) => {
+            options.push({
+              provider: cp.id,
+              providerName: cp.name,
+              model: model.name,
+            });
           });
         });
-      });
     }
 
     return options;

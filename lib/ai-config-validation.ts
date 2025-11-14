@@ -143,7 +143,6 @@ export function validateCustomProvider(provider: CustomProvider): {
     baseURL: provider.baseURL,
     models: provider.models.map(model => getModelName(model)),
     apiKey: provider.apiKey,
-    customEndpoint: provider.customEndpoint,
   };
 
   return validateCustomProviderNew(legacyProvider);
@@ -165,6 +164,5 @@ export function validateCustomProviderBoolean(provider: CustomProvider): boolean
     baseURL: provider.baseURL,
     models: provider.models.map(model => getModelName(model)),
     apiKey: provider.apiKey,
-    customEndpoint: provider.customEndpoint,
   });
 }

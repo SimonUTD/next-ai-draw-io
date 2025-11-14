@@ -550,7 +550,6 @@ export class ModelDiscoveryService {
       type: 'custom',
       apiKey: customProvider.apiKey,
       baseURL: customProvider.baseURL,
-      customEndpoint: customProvider.customEndpoint,
     };
 
     return this.discoverModels(providerConfig);
