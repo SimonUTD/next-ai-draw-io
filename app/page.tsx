@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { DrawIoEmbed } from "react-drawio";
 import ChatPanel from "@/components/chat-panel";
 import { useDiagram } from "@/contexts/diagram-context";
@@ -7,21 +7,49 @@ import { useDiagram } from "@/contexts/diagram-context";
 export default function Home() {
     const { drawioRef, handleDiagramExport } = useDiagram();
     const [isMobile, setIsMobile] = useState(false);
+    const [leftWidth, setLeftWidth] = useState(66.67);
+    const [isDragging, setIsDragging] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const checkMobile = () => {
             setIsMobile(window.innerWidth < 768);
         };
-
-        // Check on mount
         checkMobile();
-
-        // Add event listener for resize
         window.addEventListener("resize", checkMobile);
-
-        // Cleanup
         return () => window.removeEventListener("resize", checkMobile);
     }, []);
+
+    const handleMouseMove = useCallback((e: MouseEvent) => {
+        if (!containerRef.current) return;
+        
+        const containerRect = containerRef.current.getBoundingClientRect();
+        const newLeftWidth = ((e.clientX - containerRect.left) / containerRect.width) * 100;
+        
+        if (newLeftWidth >= 20 && newLeftWidth <= 80) {
+            setLeftWidth(newLeftWidth);
+        }
+    }, []);
+
+    const handleMouseUp = useCallback(() => {
+        setIsDragging(false);
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
+    }, []);
+
+    useEffect(() => {
+        if (isDragging) {
+            document.body.style.userSelect = 'none';
+            document.body.style.cursor = 'col-resize';
+            document.addEventListener("mousemove", handleMouseMove);
+            document.addEventListener("mouseup", handleMouseUp);
+        }
+
+        return () => {
+            document.removeEventListener("mousemove", handleMouseMove);
+            document.removeEventListener("mouseup", handleMouseUp);
+        };
+    }, [isDragging, handleMouseMove, handleMouseUp]);
 
     if (isMobile) {
         return (
@@ -36,8 +64,8 @@ export default function Home() {
     }
 
     return (
-        <div className="flex h-screen bg-gray-100">
-            <div className="w-2/3 p-1 h-full relative">
+        <div ref={containerRef} className="flex h-screen bg-gray-100">
+            <div style={{ width: `${leftWidth}%` }} className="p-1 h-full relative">
                 <DrawIoEmbed
                     ref={drawioRef}
                     onExport={handleDiagramExport}
@@ -49,7 +77,14 @@ export default function Home() {
                     }}
                 />
             </div>
-            <div className="w-1/3 h-full p-1">
+            <div
+                className="w-1 bg-gray-300 hover:bg-blue-500 cursor-col-resize transition-colors flex-shrink-0"
+                onMouseDown={(e) => {
+                    e.preventDefault();
+                    setIsDragging(true);
+                }}
+            />
+            <div style={{ width: `${100 - leftWidth}%` }} className="h-full p-1">
                 <ChatPanel />
             </div>
         </div>
